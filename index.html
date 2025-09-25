@@ -17,6 +17,8 @@
     .btn{padding:6px 10px;border:1px solid var(--br);border-radius:6px;background:var(--pill);color:var(--pill-ink);cursor:pointer;box-shadow:var(--shadow);font-size:13px}
     .btn.secondary{background:var(--pill-sec-bg);color:var(--pill-sec-ink)}
     .btn.ghost{background:transparent}
+    /* 視覺禁用狀態 */
+    .btn[disabled]{opacity:.45; cursor:not-allowed; filter:grayscale(25%);}    
     h1{margin:14px 0 8px 0;font-size:24px;letter-spacing:.5px;text-align:center}
     .stats{margin-left:auto;font-weight:800;white-space:nowrap;font-size:13px}
     .wrap.editable header,.wrap.editable .body{outline:2px dashed #93c5fd;background:#f0f9ff}
@@ -47,6 +49,8 @@
     li.cat-c .cat-chip{border-color:#dbeafe;background:#eff6ff;color:#1d4ed8}
     li.cat-b .cat-chip{border-color:#fde68a;background:#fffbeb;color:#b45309}
     .note{color:var(--muted);font-size:11px;text-align:center;margin-top:4px}
+    .infobar{margin:8px 0 0;padding:8px 12px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:8px;font-size:12px;color:#334155;display:flex;align-items:flex-start;gap:8px}
+    .infobar .x{margin-left:auto;border:0;background:#e2e8f0;border-radius:6px;padding:0 6px;cursor:pointer}
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
@@ -73,7 +77,7 @@
   <div class="container">
     <div class="toolbar-wrap">
       <div class="toolbar">
-        <button class="btn" id="cloudSave">雲端備份</button>
+        <button class="btn" id="cloudSave" disabled>雲端備份</button>
         <button class="btn secondary" id="cloudLoad">雲端載入</button>
         <button class="btn" id="toggleEdit">切換編輯模式</button>
         <button class="btn secondary" id="toggleHot">切換紅/黑</button>
@@ -81,10 +85,15 @@
         <button class="btn" id="exportPdf">匯出 PDF</button>
         <button class="btn" id="openImporter">匯入舊版資料</button>
         <button class="btn" id="addChain">＋ 新增服務鏈</button>
+        <span id="saveStatus" style="font-size:12px;color:#64748b;margin-left:8px;display:inline-block;min-width:80px">—</span>
         <span class="stats">會員 <span id="mAll">0</span>｜邀約 <span id="nAll">0</span>｜合計 <span id="tAll">0</span></span>
       </div>
     </div>
     <h1 id="pageTitle">富新分會 產業服務鏈</h1>
+    <div class="infobar" id="previewNote">
+      <div>此頁目前為<strong>預覽／唯讀模式</strong>：<br>按「切換編輯模式」並輸入密碼後才能啟用「雲端備份」。</div>
+      <button class="x" id="closePreviewNote">×</button>
+    </div>
     <div class="wrap" id="wrap">
       <section class="grid" id="grid"></section>
     </div>
@@ -112,7 +121,13 @@
     function renderCatChip(li, cat){ var old=li.querySelector('.cat-chip'); if(old) old.remove(); li.classList.remove('cat-c','cat-b'); if(cat==='C'||cat==='B'){ var chip=document.createElement('span'); chip.className='cat-chip'; chip.textContent=(cat==='C'?'C端':'B端'); li.appendChild(chip); li.classList.add(cat==='C'?'cat-c':'cat-b'); } }
     function bindCatToggle(li){ li.addEventListener('contextmenu',function(e){ e.preventDefault(); var cur=li.getAttribute('data-cat')||inferCatFromText((li.childNodes[0]&&li.childNodes[0].textContent)||''); var next=(cur===''?'C':(cur==='C'?'B':'')); li.setAttribute('data-cat',next); renderCatChip(li,next); }); }
 
+    // === 雲端：只允許在編輯模式下備份 ===
     async function cloudSave(){
+      if(!wrap.classList.contains('editable')){
+        setSaveStatus && setSaveStatus('唯讀模式，不允許存檔');
+        alert('唯讀模式，無法存檔。請先切換編輯模式。');
+        return;
+      }
       try{
         var chains=[]; var cards=toArray(document.querySelectorAll('.card'));
         cards.forEach(function(card){
@@ -215,13 +230,17 @@
       mAll.textContent=(allTotal-allNeed); nAll.textContent=allNeed; tAll.textContent=allTotal;
     }
 
+    // 進出編輯模式：同時控制雲端備份按鈕狀態
     function setEditable(on){
+      var cloudSaveBtn = document.getElementById('cloudSave');
       if(on){
         wrap.classList.add('editable');
         toArray(document.querySelectorAll('header, li, #pageTitle')).forEach(function(el){ el.setAttribute('contenteditable','true'); });
+        if(cloudSaveBtn){ cloudSaveBtn.removeAttribute('disabled'); }
       } else {
         wrap.classList.remove('editable');
         toArray(document.querySelectorAll('header, li, #pageTitle')).forEach(function(el){ el.removeAttribute('contenteditable'); });
+        if(cloudSaveBtn){ cloudSaveBtn.setAttribute('disabled','disabled'); }
       }
       refreshDeleteButtons();
     }
@@ -255,14 +274,74 @@
       setTimeout(function(){ if(wasEditable) setEditable(true); },600);
     };
 
-    document.getElementById('cloudSave').onclick=cloudSave;
+    document.getElementById('cloudSave').onclick=function(){
+      if(!wrap.classList.contains('editable')){
+        setSaveStatus && setSaveStatus('唯讀模式，不允許存檔');
+        alert('唯讀模式，無法存檔。請先切換編輯模式。');
+        return;
+      }
+      cloudSave();
+    };
     document.getElementById('cloudLoad').onclick=cloudLoad;
+
+    // 預覽說明關閉
+    var noteBtn=document.getElementById('closePreviewNote');
+    if(noteBtn){ noteBtn.onclick=function(){ var n=document.getElementById('previewNote'); if(n) n.remove(); }; }
+
+    // === 存檔工作：自動儲存／快捷鍵 Ctrl/Cmd+S／變更偵測 ===
+    var saveStatusEl = document.getElementById('saveStatus');
+    var _saveTimer = null, _dirty = false, _lastSaveTs = 0;
+
+    function setSaveStatus(txt){ if(saveStatusEl) saveStatusEl.textContent = txt; }
+    function markDirty(){
+      if(!wrap.classList.contains('editable')){ setSaveStatus && setSaveStatus('唯讀模式'); return; }
+      _dirty = true; setSaveStatus('有變更…'); scheduleAutoSave();
+    }
+    function scheduleAutoSave(){
+      if(_saveTimer) clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(async function(){ if(_dirty) await saveNow(true); }, 2000); // 2 秒靜默自動存
+    }
+
+    async function saveNow(silent){
+      if(!wrap.classList.contains('editable')){
+        setSaveStatus && setSaveStatus('唯讀模式，不允許存檔');
+        return;
+      }
+      try{
+        setSaveStatus('儲存中…');
+        await cloudSave();
+        _dirty = false; _lastSaveTs = Date.now();
+        if(!silent) alert('已儲存到雲端');
+        setSaveStatus('已儲存');
+      }catch(e){ setSaveStatus('儲存失敗'); console.warn(e); }
+    }
+
+    // 監聽 DOM 變更：標題、卡片、清單
+    var observer = new MutationObserver(function(muts){
+      // 忽略 saveStatus 自己
+      var touched = muts.some(function(m){
+        return m.target && !(m.target.id==='saveStatus');
+      });
+      if(touched) markDirty();
+    });
+    observer.observe(document.getElementById('wrap'), { subtree:true, childList:true, characterData:true });
+    observer.observe(document.getElementById('pageTitle'), { childList:true, characterData:true });
+
+    // 快捷鍵 Ctrl/Cmd+S
+    window.addEventListener('keydown', function(e){
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){
+        e.preventDefault(); saveNow(true);
+      }
+    });
+
+    // 離開前提醒（如果有未儲存變更）
+    window.addEventListener('beforeunload', function(e){ if(_dirty){ e.preventDefault(); e.returnValue=''; } });
 
     // 初始：沒有雲端資料時給一張示例卡；若要開啟就自動載入，取消下一行註解
     renderChains([{ title:'房屋軟裝設計產業鏈', items:[{text:'住宅室內設計'},{text:'需要邀約：木地板工程', need:true}] }]);
     // document.getElementById('cloudLoad').click();
 
-    // ====== 簡易測試（不影響使用），結果請看 Console ======
+    // ====== 內建測試（不影響使用），結果請看 Console ======
     try{
       console.log('[TEST] start');
       console.assert(inferCatFromText('C端：家電')==='C','C端判斷錯誤');
@@ -273,7 +352,14 @@
       console.assert(parseInt(document.getElementById('tAll').textContent,10)>=2,'合計應 >=2');
       // 可進出編輯模式
       setEditable(true);  console.assert(wrap.classList.contains('editable'),'進入編輯失敗');
-      setEditable(false); console.assert(!wrap.classList.contains('editable'),'退出編輯失敗');
+      // 新增測試：雲端備份按鈕啟用/禁用狀態
+      console.assert(!document.getElementById('cloudSave').hasAttribute('disabled') ,'編輯模式下雲端備份應可用');
+      setEditable(false); console.assert(document.getElementById('cloudSave').hasAttribute('disabled'),'退出編輯後雲端備份應禁用');
+      // 新增測試：renderChains 統計正確
+      renderChains([{ title:'測試鏈', items:[{text:'A'},{text:'B',need:true},{text:'C'}] }]);
+      console.assert(document.getElementById('mAll').textContent==='2','會員統計應為 2');
+      console.assert(document.getElementById('nAll').textContent==='1','邀約統計應為 1');
+      console.assert(document.getElementById('tAll').textContent==='3','合計統計應為 3');
       console.log('[TEST] all passed');
     }catch(e){ console.warn('[TEST] failed', e); }
 

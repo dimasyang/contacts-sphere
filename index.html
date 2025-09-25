@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>產業服務鏈（RWD＋Firestore＋去重＋C/B分類）</title>
+  <title>產業服務鏈（RWD＋Firestore＋去重＋C/B分類＋新增鏈）</title>
   <style>
     :root{
       --bg:#eef2e6; --ink:#0f172a; --muted:#6b7280; --card:#ffffff; --br:#e5e7eb; --shadow:0 10px 30px rgba(0,0,0,.06);
@@ -13,62 +13,61 @@
     body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans TC","PingFang TC",sans-serif;line-height:1.4}
     .container{max-width:1280px;margin:0 auto;padding:14px 12px 56px}
     .toolbar-wrap{position:sticky;top:0;z-index:50;background:linear-gradient(#eef2e6,#eef2e6cc 60%,#eef2e600);backdrop-filter:saturate(120%) blur(6px)}
-    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0}
-    .btn{padding:10px 14px;border:1px solid var(--br);border-radius:999px;background:var(--pill);color:var(--pill-ink);cursor:pointer;box-shadow:var(--shadow);font-size:14px}
+    .toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0}
+    .btn{padding:6px 10px;border:1px solid var(--br);border-radius:6px;background:var(--pill);color:var(--pill-ink);cursor:pointer;box-shadow:var(--shadow);font-size:13px}
     .btn.secondary{background:var(--pill-sec-bg);color:var(--pill-sec-ink)}
     .btn.ghost{background:transparent}
-    h1{margin:14px 0 8px 0;font-size:28px;letter-spacing:.5px;text-align:center}
-    .stats{margin-left:auto;font-weight:800;white-space:nowrap}
+    h1{margin:14px 0 8px 0;font-size:24px;letter-spacing:.5px;text-align:center}
+    .stats{margin-left:auto;font-weight:800;white-space:nowrap;font-size:13px}
     .wrap.editable header,.wrap.editable .body{outline:2px dashed #93c5fd;background:#f0f9ff}
     .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:14px 0}
-    .card{border:1px solid var(--br);border-radius:16px;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
-    .hdr{padding:10px 14px;color:#fff;font-weight:900;letter-spacing:.6px}
-    /* 顏色塊（每 12 張輪替）*/
+    .card{border:1px solid var(--br);border-radius:16px;overflow:hidden;background:var(--card);box-shadow:var(--shadow);position:relative}
+    .hdr{padding:8px 12px;color:#fff;font-weight:900;letter-spacing:.6px;font-size:15px}
+    header .del-chain{position:absolute;right:6px;top:6px;border:none;background:#ef4444;color:#fff;border-radius:6px;padding:0 6px;cursor:pointer;display:none;font-size:12px}
+    .wrap.editable header .del-chain{display:inline-block}
+    header[contenteditable="true"] .del-chain{display:inline-block}
+    /* 顏色塊 */
     header.hdr1{background:#f59e0b} header.hdr2{background:#6366f1} header.hdr3{background:#6b7280}
     header.hdr4{background:#10b981} header.hdr5{background:#f97316} header.hdr6{background:#ef4444}
     header.hdr7{background:#14b8a6} header.hdr8{background:#8b5cf6} header.hdr9{background:#22c55e}
     header.hdr10{background:#0ea5e9} header.hdr11{background:#d946ef} header.hdr12{background:#94a3b8}
-    .body{padding:10px 14px;min-height:140px}
+    .body{padding:8px 12px;min-height:120px}
     ul{list-style:none;margin:0;padding:0}
-    li{padding:8px 0;position:relative;border-bottom:1px dashed #e5e7eb}
+    li{padding:6px 0;position:relative;border-bottom:1px dashed #e5e7eb;font-size:13px}
     li:last-child{border-bottom:0}
     li.hot{color:#b91c1c;font-weight:600}
-    .li-x{position:absolute;right:0;top:6px;border:0;background:#ef4444;color:#fff;border-radius:8px;padding:2px 8px;cursor:pointer}
-    /* 非編輯模式隱藏刪除鈕 */
-    .wrap:not(.editable) .li-x{display:none;pointer-events:none;opacity:.2}
-    .add-item{margin-top:8px;border:1px dashed #bbb;background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;width:100%}
-    .meta{padding:8px 12px;border-top:1px solid #eee;background:#fafafa;font-size:12px;color:#475569;display:flex;gap:8px;flex-wrap:wrap}
-    .meta .chip{display:inline-block;padding:2px 8px;border:1px solid var(--br);border-radius:999px;font-weight:700}
+    .li-x{position:absolute;right:0;top:4px;border:0;background:#ef4444;color:#fff;border-radius:6px;padding:0 6px;cursor:pointer;display:none;font-size:12px}
+    .wrap.editable li .li-x{display:inline-block}
+    .add-item{margin-top:6px;border:1px dashed #bbb;background:#fff;border-radius:6px;padding:4px 8px;cursor:pointer;width:100%;font-size:12px}
+    .meta{padding:6px 8px;border-top:1px solid #eee;background:#fafafa;font-size:11px;color:#475569;display:flex;gap:6px;flex-wrap:wrap}
+    .meta .chip{display:inline-block;padding:0 6px;border:1px solid var(--br);border-radius:999px;font-weight:700;font-size:11px}
     .meta .chip.warn{border-color:#fecaca;color:#b91c1c}
     .meta .chip.total{border-color:#dbeafe}
-    /* C/B chip */
-    li .cat-chip{display:inline-block;margin-left:6px;padding:0 6px;border:1px solid #d1d5db;border-radius:999px;font-size:11px}
+    li .cat-chip{display:inline-block;margin-left:6px;padding:0 4px;border:1px solid #d1d5db;border-radius:999px;font-size:10px}
     li.cat-c .cat-chip{border-color:#dbeafe;background:#eff6ff;color:#1d4ed8}
     li.cat-b .cat-chip{border-color:#fde68a;background:#fffbeb;color:#b45309}
-    .note{color:var(--muted);font-size:12px;text-align:center;margin-top:4px}
-    /* 內嵌匯入器 */
-    .importer{margin:8px 0 0 0;display:none;width:100%}
-    .importer textarea{width:100%;min-height:160px;border:1px solid var(--br);border-radius:12px;padding:10px;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
-    .importer .actions{display:flex;gap:8px;margin-top:8px}
-
-    /* RWD */
-    @media (max-width:1024px){.grid{grid-template-columns:repeat(3,1fr)}.stats{width:100%;margin-left:0}}
-    @media (max-width:768px){.container{padding:10px 10px 56px}.grid{grid-template-columns:repeat(2,1fr);gap:12px}h1{font-size:22px}.btn{padding:10px 12px;font-size:13px}.toolbar{gap:8px}}
-    @media (max-width:520px){.grid{grid-template-columns:repeat(1,1fr)}.btn{flex:1 1 auto}.stats{font-size:13px}.li-x{top:8px}}
-
-    /* Print (PDF 匯出) */
-    @media print{
-      @page { size: A4 portrait; margin: 12mm; }
-      *{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      body{ background:#fff; }
-      .toolbar-wrap, .note, #importer, .btn { display:none !important; }
-      .container{ max-width:none; padding:0; }
-      .grid{ grid-template-columns:repeat(2,1fr); gap:12px; }
-      .card{ break-inside: avoid; box-shadow:none; border:1px solid #ddd; }
-      .wrap.editable header, .wrap.editable .body{ outline:none; background:#fff; }
-      .li-x{ display:none !important; }
-    }
+    .note{color:var(--muted);font-size:11px;text-align:center;margin-top:4px}
   </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBfGL-GcBiTDANBbPxsbAPSn42gqkQAn4M",
+      authDomain: "contacts-sphere.firebaseapp.com",
+      projectId: "contacts-sphere",
+      storageBucket: "contacts-sphere.firebasestorage.app",
+      messagingSenderId: "612743466240",
+      appId: "1:612743466240:web:72235bb15559d3297f77e5",
+      measurementId: "G-HB4GEF8JMM"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 暴露 Firestore 實例給下方非 module 腳本使用
+    window.firestoreDB = db;
+  </script>
 </head>
 <body>
   <div class="container">
@@ -81,134 +80,204 @@
         <button class="btn ghost" id="recalcBtn">重算統計</button>
         <button class="btn" id="exportPdf">匯出 PDF</button>
         <button class="btn" id="openImporter">匯入舊版資料</button>
+        <button class="btn" id="addChain">＋ 新增服務鏈</button>
         <span class="stats">會員 <span id="mAll">0</span>｜邀約 <span id="nAll">0</span>｜合計 <span id="tAll">0</span></span>
-        <div class="importer" id="importer">
-          <textarea id="importSrc" placeholder="將『美化版完整』HTML 或 JSON 貼到這裡。可直接貼整份 HTML，我會自動解析每張卡的標題、清單項、紅/黑、C/B。"></textarea>
-          <div class="actions">
-            <button class="btn" id="parseImport">解析並覆蓋畫面</button>
-            <button class="btn secondary" id="saveAfterImport">解析＋寫入雲端</button>
-            <button class="btn ghost" id="closeImporter">收起</button>
-          </div>
-        </div>
       </div>
     </div>
-    <h1 id="pageTitle">富新分會 服務產業鏈</h1>
-
+    <h1 id="pageTitle">富新分會 產業服務鏈</h1>
     <div class="wrap" id="wrap">
-      <!-- 初始示例（雲端載入或匯入會覆蓋） -->
-      <section class="grid" id="grid">
-        <article class="card">
-          <header class="hdr hdr1 editable-target">房屋軟裝設計產業鏈</header>
-          <div class="body">
-            <ul>
-              <li class="editable-target">住宅室內設計</li>
-              <li class="editable-target hot">需要邀約：木地板工程</li>
-            </ul>
-            <button class="add-item">＋ 新增項目</button>
-          </div>
-        </article>
-        <article class="card">
-          <header class="hdr hdr2 editable-target">房屋基礎工程產業鏈</header>
-          <div class="body">
-            <ul>
-              <li class="editable-target">客製化櫥櫃</li>
-              <li class="editable-target hot">需要邀約：鋁門窗</li>
-            </ul>
-            <button class="add-item">＋ 新增項目</button>
-          </div>
-        </article>
-      </section>
+      <section class="grid" id="grid"></section>
     </div>
-    <div class="note">RWD：手機單欄、平板雙欄、桌面 3–4 欄。右鍵切換 C/B；輸入「C端：」「B端：」自動辨識。匯入器可直接貼舊版 HTML 或 JSON。</div>
   </div>
 
-  <!-- UI 與本地互動（通用） -->
   <script>
   (function(){
-    var wrap = document.getElementById('wrap');
-    var recalcBtn = document.getElementById('recalcBtn');
-    var mAll = document.getElementById('mAll'), nAll = document.getElementById('nAll'), tAll = document.getElementById('tAll');
+    var wrap=document.getElementById('wrap');
+    var grid=document.getElementById('grid');
+    var mAll=document.getElementById('mAll');
+    var nAll=document.getElementById('nAll');
+    var tAll=document.getElementById('tAll');
+    var lastClickedLi=null;
+
+    // 動態載入 Firestore v9 模組（確保非 module 腳本能使用 doc/getDoc/setDoc）
+    var _fsMod=null; 
+    async function ensureFS(){
+      if(_fsMod) return _fsMod;
+      _fsMod = await import('https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js');
+      return _fsMod;
+    }
+
     function toArray(nl){return Array.prototype.slice.call(nl||[],0);} 
-
-    // C/B 類別
     function inferCatFromText(txt){ if(!txt) return ''; if(/^\s*C端[:：]/.test(txt)) return 'C'; if(/^\s*B端[:：]/.test(txt)) return 'B'; return ''; }
-    function renderCatChip(li, cat){ var old = li.querySelector('.cat-chip'); if(old) old.remove(); li.classList.remove('cat-c','cat-b'); if(cat==='C' || cat==='B'){ var chip = document.createElement('span'); chip.className='cat-chip'; chip.textContent=(cat==='C'?'C端':'B端'); li.appendChild(chip); if(cat==='C') li.classList.add('cat-c'); else li.classList.add('cat-b'); } }
-    function bindCatToggle(li){ li.addEventListener('contextmenu', function(e){ e.preventDefault(); var cur = li.getAttribute('data-cat') || inferCatFromText((li.childNodes[0] && li.childNodes[0].textContent)||''); var next = (cur===''?'C':(cur==='C'?'B':'')); li.setAttribute('data-cat', next); renderCatChip(li, next); }); }
+    function renderCatChip(li, cat){ var old=li.querySelector('.cat-chip'); if(old) old.remove(); li.classList.remove('cat-c','cat-b'); if(cat==='C'||cat==='B'){ var chip=document.createElement('span'); chip.className='cat-chip'; chip.textContent=(cat==='C'?'C端':'B端'); li.appendChild(chip); li.classList.add(cat==='C'?'cat-c':'cat-b'); } }
+    function bindCatToggle(li){ li.addEventListener('contextmenu',function(e){ e.preventDefault(); var cur=li.getAttribute('data-cat')||inferCatFromText((li.childNodes[0]&&li.childNodes[0].textContent)||''); var next=(cur===''?'C':(cur==='C'?'B':'')); li.setAttribute('data-cat',next); renderCatChip(li,next); }); }
 
-    // 刪除/新增/紅黑
-    function refreshDeleteButtons(){ var lis = toArray(document.querySelectorAll('li')); for(var i=0;i<lis.length;i++){ (function(li){ if(!li.querySelector('.li-x')){ var x = document.createElement('button'); x.className='li-x'; x.title='刪除'; x.textContent='×'; x.addEventListener('click', function(e){ e.preventDefault(); if(!wrap.classList.contains('editable')) return; li.parentNode.removeChild(li); updateStats(); }); li.appendChild(x); } bindCatToggle(li); li.onclick = function(e){ if(e.target.classList.contains('li-x')) return; if(!wrap.classList.contains('editable')) return; li.classList.toggle('hot'); updateStats(); }; var catAttr = li.getAttribute('data-cat') || inferCatFromText((li.childNodes[0]&&li.childNodes[0].textContent)||''); if(catAttr){ li.setAttribute('data-cat', catAttr); renderCatChip(li, catAttr); } })(lis[i]); } }
-    function wireAddButtons(){ var adds = toArray(document.querySelectorAll('.add-item')); for(var i=0;i<adds.length;i++){ adds[i].onclick = function(e){ e.preventDefault(); if(!wrap.classList.contains('editable')) return; var txt = window.prompt('輸入新項目'); if(txt==null || txt==='') return; var li = document.createElement('li'); li.className='editable-target'; if(/^\s*(需要邀約|邀約)[:：]/.test(txt)) li.classList.add('hot'); li.appendChild(document.createTextNode(txt)); var x=document.createElement('button'); x.className='li-x'; x.title='刪除'; x.textContent='×'; li.appendChild(x); this.parentNode.querySelector('ul').appendChild(li); var cat = inferCatFromText(txt); if(cat){ li.setAttribute('data-cat',cat); renderCatChip(li, cat); } bindCatToggle(li); updateStats(); }; } }
+    async function cloudSave(){
+      try{
+        var chains=[]; var cards=toArray(document.querySelectorAll('.card'));
+        cards.forEach(function(card){
+          var title=(card.querySelector('header')||{}).textContent.trim();
+          var items=[]; card.querySelectorAll('li').forEach(function(li){ items.push({ text:li.childNodes[0].textContent.trim(), need:li.classList.contains('hot'), cat:li.getAttribute('data-cat')||'' }); });
+          chains.push({ title:title, items:items });
+        });
+        var branchTitle = (document.getElementById('pageTitle')||{}).textContent.trim();
+        if(!window.firestoreDB) throw new Error('Firebase 未初始化');
+        const { doc, setDoc } = await ensureFS();
+        await setDoc(doc(window.firestoreDB,'fuXinChains','main'), { branchTitle: branchTitle, chains:chains, ts:Date.now() }, { merge:true });
+        alert('已儲存到雲端');
+      }catch(err){ alert('雲端備份失敗：'+err.message); }
+    }
 
-    function updateStats(){ var cards = toArray(document.querySelectorAll('.card')); var allTotal=0, allNeed=0; for(var c=0;c<cards.length;c++){ var card = cards[c]; var lis = toArray(card.querySelectorAll('li')); var needLis = []; for(var j=0;j<lis.length;j++){ if(lis[j].classList.contains('hot')) needLis.push(lis[j]); } var memCount = lis.length - needLis.length; var totCount = lis.length; allTotal += totCount; allNeed += needLis.length; var meta = card.querySelector('.meta'); if(!meta){ meta = document.createElement('div'); meta.className='meta'; var body = card.querySelector('.body'); card.appendChild(meta); card.insertBefore(meta, body.nextSibling? body.nextSibling : body); } meta.innerHTML = '<span class="chip">會員 ' + memCount + '</span>' + '<span class="chip warn">邀約 ' + needLis.length + '</span>' + '<span class="chip total">合計 ' + totCount + '</span>'; } if(mAll) mAll.textContent = (allTotal - allNeed); if(nAll) nAll.textContent = allNeed; if(tAll) tAll.textContent = allTotal; }
+    async function cloudLoad(){
+      try{
+        if(!window.firestoreDB) throw new Error('Firebase 未初始化');
+        const { doc, getDoc } = await ensureFS();
+        const snap = await getDoc(doc(window.firestoreDB,'fuXinChains','main'));
+        if(snap.exists()){
+          const data=snap.data();
+          if(data.branchTitle){ (document.getElementById('pageTitle')||{}).textContent = data.branchTitle; }
+          renderChains(Array.isArray(data.chains)? data.chains : []);
+          alert('已自雲端載入並覆蓋畫面');
+        }else{
+          alert('雲端沒有資料');
+        }
+      }catch(err){ alert('雲端載入失敗：'+err.message); }
+    }
 
-    // 編輯模式
-    function setEditable(on){ if(on){ wrap.classList.add('editable'); var nodes = toArray(document.querySelectorAll('header, li')); for(var i=0;i<nodes.length;i++){ nodes[i].setAttribute('contenteditable','true'); } }else{ wrap.classList.remove('editable'); var nodes2 = toArray(document.querySelectorAll('header, li')); for(var j=0;j<nodes2.length;j++){ nodes2[j].removeAttribute('contenteditable'); } } }
-    document.getElementById('toggleEdit').onclick = function(e){ e.preventDefault(); if(!wrap.classList.contains('editable')){ var pin = window.prompt(''); if(pin==='2614'){ setEditable(true); } else if(pin!==null){ alert('密碼錯誤'); } } else { setEditable(false); } };
-    document.getElementById('recalcBtn').onclick = function(e){e.preventDefault(); updateStats();};
+    function renderChains(chains){
+      grid.innerHTML='';
+      chains.forEach(function(chain,idx){
+        var art=document.createElement('article'); art.className='card';
+        var hdr=document.createElement('header'); hdr.className='hdr hdr'+(((idx%12)+1)); hdr.textContent=chain.title||''; art.appendChild(hdr);
+        var body=document.createElement('div'); body.className='body';
+        var ul=document.createElement('ul');
+        (chain.items||[]).forEach(function(it){
+          var li=document.createElement('li'); if(it.need) li.classList.add('hot'); if(it.cat) li.setAttribute('data-cat',it.cat);
+          li.textContent=it.text||'';
+          var x=document.createElement('button'); x.className='li-x'; x.textContent='×'; x.addEventListener('click',function(e){ e.preventDefault(); if(!wrap.classList.contains('editable')) return; li.remove(); updateStats(); }); li.appendChild(x);
+          ul.appendChild(li);
+        });
+        body.appendChild(ul);
+        var addBtn=document.createElement('button'); addBtn.className='add-item'; addBtn.textContent='＋ 新增項目'; body.appendChild(addBtn);
+        art.appendChild(body); grid.appendChild(art);
+      });
+      refreshDeleteButtons(); wireAddButtons(); updateStats();
+    }
 
-    // 匯出 PDF
-    document.getElementById('exportPdf').onclick = function(){ var wasEditable = wrap.classList.contains('editable'); if(wasEditable){ setEditable(false); } updateStats(); setTimeout(function(){ window.print(); }, 50); setTimeout(function(){ if(wasEditable){ setEditable(true); } }, 600); };
+    function refreshDeleteButtons(){
+      var lis=toArray(document.querySelectorAll('li'));
+      lis.forEach(function(li){
+        if(!li.querySelector('.li-x')){
+          var x=document.createElement('button'); x.className='li-x'; x.title='刪除'; x.textContent='×';
+          x.addEventListener('click',function(e){ e.preventDefault(); if(!wrap.classList.contains('editable')) return; li.remove(); updateStats(); });
+          li.appendChild(x);
+        }
+        bindCatToggle(li);
+        li.onclick=function(e){ if(e.target.classList.contains('li-x')) return; lastClickedLi=li; if(!wrap.classList.contains('editable')) return; li.classList.toggle('hot'); updateStats(); };
+        var catAttr=li.getAttribute('data-cat')||inferCatFromText((li.childNodes[0]&&li.childNodes[0].textContent)||'');
+        if(catAttr){ li.setAttribute('data-cat',catAttr); renderCatChip(li,catAttr); }
+      });
 
-    // 匯入器 UI
-    var openImporter = document.getElementById('openImporter');
-    var importer = document.getElementById('importer');
-    var closeImporter = document.getElementById('closeImporter');
-    var parseImport = null, saveAfterImport = null, importSrc = null;
-    openImporter.onclick = function(){ importer.style.display = importer.style.display==='block'?'none':'block'; };
-    closeImporter.onclick = function(){ importer.style.display='none'; };
+      var chains=toArray(document.querySelectorAll('.card'));
+      chains.forEach(function(card){
+        if(!card.querySelector('.del-chain')){
+          var del=document.createElement('button'); del.className='del-chain'; del.textContent='×';
+          del.addEventListener('click',function(){ if(!wrap.classList.contains('editable')) return; card.remove(); updateStats(); });
+          (card.querySelector('header')||card).appendChild(del);
+        }
+      });
+    }
 
-    function renderChains(data){ data = cleanChains(data); var grid = document.getElementById('grid'); grid.innerHTML=''; for(var k=0;k<data.length;k++){ var chain = data[k]; var art=document.createElement('article'); art.className='card'; var hdr=document.createElement('header'); hdr.className='hdr hdr'+(((k%12)+1)); hdr.textContent=chain.title||('未命名產業鏈 '+(k+1)); var body=document.createElement('div'); body.className='body'; var ul=document.createElement('ul'); var items = chain.items||[]; for(var m=0;m<items.length;m++){ var it=items[m]; var li=document.createElement('li'); li.className='editable-target' + (it.need?' hot':''); if(it.cat){ li.setAttribute('data-cat', it.cat); } li.appendChild(document.createTextNode(it.text||'')); var x=document.createElement('button'); x.className='li-x'; x.title='刪除'; x.textContent='×'; li.appendChild(x); ul.appendChild(li); } var addBtn=document.createElement('button'); addBtn.className='add-item'; addBtn.textContent='＋ 新增項目'; body.appendChild(ul); body.appendChild(addBtn); art.appendChild(hdr); art.appendChild(body); grid.appendChild(art); } refreshDeleteButtons(); wireAddButtons(); updateStats(); }
+    function wireAddButtons(){
+      var adds=toArray(document.querySelectorAll('.add-item'));
+      adds.forEach(function(btn){
+        btn.onclick=function(e){ e.preventDefault(); if(!wrap.classList.contains('editable')) return;
+          var txt=prompt('輸入新項目'); if(!txt) return;
+          var li=document.createElement('li'); li.className='editable-target'; if(/^\s*(需要邀約|邀約)[:：]/.test(txt)) li.classList.add('hot');
+          li.textContent=txt;
+          var x=document.createElement('button'); x.className='li-x'; x.textContent='×'; x.addEventListener('click',function(ev){ ev.preventDefault(); if(!wrap.classList.contains('editable')) return; li.remove(); updateStats(); }); li.appendChild(x);
+          btn.parentNode.querySelector('ul').appendChild(li);
+          var cat=inferCatFromText(txt); if(cat){ li.setAttribute('data-cat',cat); renderCatChip(li,cat); }
+          bindCatToggle(li); updateStats(); };
+      });
+    }
 
-    function serializeChains(){ var cards = toArray(document.querySelectorAll('.card')); var out = []; for(var i=0;i<cards.length;i++){ var card = cards[i]; var title = (card.querySelector('header')||{}).textContent || ''; title = title.replace(/^\s+|\s+$/g,''); var lis = toArray(card.querySelectorAll('li')); var items = []; for(var j=0;j<lis.length;j++){ var t = (lis[j].childNodes[0] && lis[j].childNodes[0].textContent) ? lis[j].childNodes[0].textContent : ''; t = t.replace(/^\s+|\s+$/g,''); items.push({ text:t, need:lis[j].classList.contains('hot'), cat:(lis[j].getAttribute('data-cat')||'') }); } out.push({ title:title, items:items }); } return out; }
+    function updateStats(){
+      var cards=toArray(document.querySelectorAll('.card'));
+      var allTotal=0,allNeed=0;
+      cards.forEach(function(card){
+        var lis=toArray(card.querySelectorAll('li'));
+        var needLis=lis.filter(function(li){return li.classList.contains('hot')});
+        var memCount=lis.length-needLis.length; var totCount=lis.length; allTotal+=totCount; allNeed+=needLis.length;
+        var meta=card.querySelector('.meta'); if(!meta){ meta=document.createElement('div'); meta.className='meta'; card.appendChild(meta);} 
+        meta.innerHTML='<span class="chip">會員 '+memCount+'</span><span class="chip warn">邀約 '+needLis.length+'</span><span class="chip total">合計 '+totCount+'</span>';
+      });
+      mAll.textContent=(allTotal-allNeed); nAll.textContent=allNeed; tAll.textContent=allTotal;
+    }
 
-    function cleanChains(data){ if(!data || !data.length) return []; function norm(s){ s = (s||'').replace(/^\s+|\s+$/g,''); s=s.replace(/\s+/g,' '); return s; } for(var i=0;i<data.length;i++){ var ch = data[i]||{}; var seen={}, uniq=[]; var items = ch.items||[]; for(var j=0;j<items.length;j++){ var txt = norm(items[j].text); if(!txt) continue; var key = txt.toLowerCase(); if(!seen[key]){ seen[key]=true; uniq.push({ text:txt, need:!!items[j].need, cat:(items[j].cat||'') }); } else { for(var t=0;t<uniq.length;t++){ if((uniq[t].text||'').toLowerCase()===key && (!uniq[t].cat && items[j].cat)){ uniq[t].cat = items[j].cat; break; } } } } ch.title = norm(ch.title); ch.items = uniq; data[i]=ch; } var idx={}, res=[]; for(var k=0;k<data.length;k++){ var tkey = (data[k].title||'').toLowerCase(); if(!tkey) continue; if(idx.hasOwnProperty(tkey)){ var tgt = res[idx[tkey]], seen2={}; for(var a=0;a<tgt.items.length;a++){ seen2[(tgt.items[a].text||'').toLowerCase()] = true; } for(var b=0;b<data[k].items.length;b++){ var it=data[k].items[b]; var k2=(it.text||'').toLowerCase(); if(!seen2[k2]){ seen2[k2]=true; tgt.items.push({text:it.text, need:!!it.need, cat:(it.cat||'')}); } else { for(var z=0; z<tgt.items.length; z++){ var ti=tgt.items[z]; if((ti.text||'').toLowerCase()===k2 && (!ti.cat && it.cat)){ ti.cat=it.cat; break; } } } } }else{ idx[tkey]=res.length; res.push({ title:data[k].title, items:data[k].items }); } } return res; }
+    function setEditable(on){
+      if(on){
+        wrap.classList.add('editable');
+        toArray(document.querySelectorAll('header, li, #pageTitle')).forEach(function(el){ el.setAttribute('contenteditable','true'); });
+      } else {
+        wrap.classList.remove('editable');
+        toArray(document.querySelectorAll('header, li, #pageTitle')).forEach(function(el){ el.removeAttribute('contenteditable'); });
+      }
+      refreshDeleteButtons();
+    }
 
-    // 匯入器：解析舊版 HTML/JSON
-    function parseLegacy(text){ text = text || ''; try{ var j = JSON.parse(text); if(Array.isArray(j)) return j; if(j && Array.isArray(j.chains)) return j.chains; }catch(_){} var doc = new DOMParser().parseFromString(text,'text/html'); var cards = doc.querySelectorAll('article.card, .card'); var out=[]; if(cards.length){ cards.forEach(function(card){ var title=''; var h = card.querySelector('header.hdr, header, .hdr'); title = h ? (h.textContent||'').trim() : ''; var items=[]; card.querySelectorAll('ul li').forEach(function(li){ var raw=(li.childNodes[0]&&li.childNodes[0].textContent)||li.textContent||''; raw=raw.trim(); var need = li.classList.contains('hot') || /^\s*(需要邀約|邀約)[:：]/.test(raw); var cat = (li.getAttribute('data-cat')||''); if(!cat){ if(/^\s*C端[:：]/.test(raw)) cat='C'; else if(/^\s*B端[:：]/.test(raw)) cat='B'; } items.push({text:raw, need:need, cat:cat}); }); if(title || items.length){ out.push({title:title||'未命名產業鏈', items:items}); } }); } else { var headers = doc.querySelectorAll('header.hdr, .hdr, h2, h3'); headers.forEach(function(h,idx){ var title=(h.textContent||'').trim(); var section=h.closest('article, section, div')||doc.body; var lis = section.querySelectorAll('li'); var items=[]; lis.forEach(function(li){ var raw=(li.childNodes[0]&&li.childNodes[0].textContent)||li.textContent||''; raw=raw.trim(); var need = li.classList.contains('hot') || /^\s*(需要邀約|邀約)[:：]/.test(raw); var cat = (li.getAttribute('data-cat')||''); if(!cat){ if(/^\s*C端[:：]/.test(raw)) cat='C'; else if(/^\s*B端[:：]/.test(raw)) cat='B'; } items.push({text:raw, need:need, cat:cat}); }); if(title || items.length){ out.push({title:title||('未命名產業鏈 '+(idx+1)), items:items}); } }); } return out; }
-
-    // 綁定雲端按鈕（由 Firestore 模組注入實作）
-    document.getElementById('cloudSave').onclick = function(e){ e.preventDefault(); if(window._saveToFirestore){ window._saveToFirestore(cleanChains(serializeChains())); } else { alert('此環境無法連線 Firebase；請部署後再試。'); } };
-    document.getElementById('cloudLoad').onclick = function(e){ e.preventDefault(); if(window._loadFromFirestore){ window._loadFromFirestore(); } else { alert('此環境無法連線 Firebase；請部署後再試。'); } };
-
-    // 匯入器按鈕在 DOM ready 後抓取
-    window.addEventListener('DOMContentLoaded', function(){
-      parseImport = document.getElementById('parseImport');
-      saveAfterImport = document.getElementById('saveAfterImport');
-      importSrc = document.getElementById('importSrc');
-      parseImport.onclick = function(){ var src = importSrc.value.trim(); if(!src){ alert('請先貼上舊版 HTML 或 JSON'); return; } var data = parseLegacy(src); if(!data.length){ alert('解析不到資料'); return; } renderChains(data); document.getElementById('importer').style.display='none'; };
-      saveAfterImport.onclick = function(){ var src = importSrc.value.trim(); if(!src){ alert('請先貼上舊版 HTML 或 JSON'); return; } var data = parseLegacy(src); if(!data.length){ alert('解析不到資料'); return; } if(window._saveToFirestore){ window._saveToFirestore(cleanChains(data)); document.getElementById('importer').style.display='none'; } else { renderChains(data); document.getElementById('importer').style.display='none'; alert('目前環境未連 Firebase，已先載入到畫面。'); } };
-    });
-
-    // 暴露全域以便 Firestore 呼叫
-    window.__renderChains = renderChains;
-    window.__cleanChains = cleanChains;
-
-    // 初始
-    refreshDeleteButtons(); wireAddButtons(); setEditable(false); updateStats();
-  })();
-  </script>
-
-  <!-- Firestore（可用時才載入；失敗不影響本地） -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js";
-    const firebaseConfig = {
-      apiKey: "AIzaSyBfGL-GcBiTDANBbPxsbAPSn42gqkQAn4M",
-      authDomain: "contacts-sphere.firebaseapp.com",
-      projectId: "contacts-sphere",
-      storageBucket: "contacts-sphere.firebasestorage.app",
-      messagingSenderId: "612743466240",
-      appId: "1:612743466240:web:72235bb15559d3297f77e5",
-      measurementId: "G-HB4GEF8JMM"
+    // === Buttons ===
+    document.getElementById('toggleEdit').onclick=function(){
+      if(!wrap.classList.contains('editable')){ var pin=prompt(''); if(pin==='2614'){ setEditable(true);} else if(pin!==null){ alert('密碼錯誤'); } }
+      else { setEditable(false); }
     };
+    document.getElementById('recalcBtn').onclick=function(){ updateStats(); };
+    document.getElementById('toggleHot').onclick=function(){ if(!wrap.classList.contains('editable')) return; if(!lastClickedLi){ alert('先點一下要切換的項目'); return;} lastClickedLi.classList.toggle('hot'); updateStats(); };
+
+    document.getElementById('addChain').onclick=function(){
+      if(!wrap.classList.contains('editable')) return;
+      var title=prompt('輸入新服務鏈標題'); if(!title) return;
+      var idx=document.querySelectorAll('.card').length+1;
+      var art=document.createElement('article'); art.className='card';
+      var hdr=document.createElement('header'); hdr.className='hdr hdr'+(((idx%12)+1)); hdr.textContent=title; art.appendChild(hdr);
+      var body=document.createElement('div'); body.className='body';
+      var ul=document.createElement('ul'); body.appendChild(ul);
+      var addBtn=document.createElement('button'); addBtn.className='add-item'; addBtn.textContent='＋ 新增項目'; body.appendChild(addBtn);
+      art.appendChild(body); grid.appendChild(art);
+      refreshDeleteButtons(); wireAddButtons(); updateStats();
+    };
+
+    document.getElementById('exportPdf').onclick=function(){
+      var wasEditable=wrap.classList.contains('editable');
+      if(wasEditable) setEditable(false);
+      updateStats();
+      setTimeout(function(){ window.print(); },50);
+      setTimeout(function(){ if(wasEditable) setEditable(true); },600);
+    };
+
+    document.getElementById('cloudSave').onclick=cloudSave;
+    document.getElementById('cloudLoad').onclick=cloudLoad;
+
+    // 初始：沒有雲端資料時給一張示例卡；若要開啟就自動載入，取消下一行註解
+    renderChains([{ title:'房屋軟裝設計產業鏈', items:[{text:'住宅室內設計'},{text:'需要邀約：木地板工程', need:true}] }]);
+    // document.getElementById('cloudLoad').click();
+
+    // ====== 簡易測試（不影響使用），結果請看 Console ======
     try{
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      window._saveToFirestore = async function(cleanChains){ await setDoc(doc(db,'fuXinChains','main'),{chains:cleanChains,ts:Date.now()},{merge:true}); alert('已儲存到雲端'); };
-      window._loadFromFirestore = async function(){ const snap = await getDoc(doc(db,'fuXinChains','main')); if(snap.exists()){ const data = snap.data(); const chains = Array.isArray(data.chains)? data.chains : []; window.__renderChains(chains); alert('已自雲端載入並覆蓋畫面'); } else { alert('雲端沒有資料'); } };
-      // 若可連線，啟動時自動嘗試載入（可註解）
-      // window._loadFromFirestore();
-    }catch(err){ console.warn('Firestore 初始化失敗：', err); }
+      console.log('[TEST] start');
+      console.assert(inferCatFromText('C端：家電')==='C','C端判斷錯誤');
+      console.assert(inferCatFromText('B端：工程')==='B','B端判斷錯誤');
+      // 初始示例卡：2 筆，其中 1 筆 hot
+      console.assert(parseInt(document.getElementById('mAll').textContent,10)>=1,'會員數應 >=1');
+      console.assert(parseInt(document.getElementById('nAll').textContent,10)>=1,'邀約數應 >=1');
+      console.assert(parseInt(document.getElementById('tAll').textContent,10)>=2,'合計應 >=2');
+      // 可進出編輯模式
+      setEditable(true);  console.assert(wrap.classList.contains('editable'),'進入編輯失敗');
+      setEditable(false); console.assert(!wrap.classList.contains('editable'),'退出編輯失敗');
+      console.log('[TEST] all passed');
+    }catch(e){ console.warn('[TEST] failed', e); }
+
+  })();
   </script>
 </body>
 </html>
